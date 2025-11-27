@@ -1,0 +1,469 @@
+
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Attendance Table - Tutorial 2</title>
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <style>
+.highlight {
+  background-color: #b3e5fc !important; /* Light blue for hover */
+  
+
+}
+</style>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f7f7f7; }
+    table { border-collapse: collapse; width: 100%; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 6px; text-align: center; font-size: 14px; }
+    th { background: #eee; }
+    .row-good { background-color: #dff0d8; }   /* green */
+    .row-warning { background-color: #fcf8e3; }/* yellow */
+    .row-bad { background-color: #f2dede; }    /* red */
+    .name-col { text-align: left; padding-left: 10px; }
+    .msg { text-align: left; padding-left: 8px; width: 220px; }
+    .small { font-size: 12px; color: #333; }
+    caption { font-weight: bold; margin-bottom: 8px; text-align: left; }
+    @media (max-width: 900px) {
+      table, thead, tbody, th, td, tr { display: block; }
+      thead { display: none; }
+      tr { margin-bottom: 12px; border: 1px solid #ddd; }
+      td { border: none; padding: 8px; display: flex; justify-content: space-between; }
+      td::before { font-weight: bold; color: #444; }
+    }
+  </style>
+</head>
+<body>
+  <h2>Attendance Table (S1 - S6 and P1 - P6)</h2>
+  <p class="small">Change presence/participation checkboxes to update results automatically.</p>
+   <!-- Report Section -->
+      <!-- Report Section -->
+    <section id="report" class="card" aria-live="polite" style="display:none;">
+      <h2>Attendance Report – per Session</h2>
+
+      <!-- petite légende -->
+      <div class="legend">
+        <span><i class="dot total"></i>Total</span>
+        <span><i class="dot present"></i>Present</span>
+        <span><i class="dot participated"></i>Participated</span>
+      </div>
+
+      <div class="chart-wrap">
+        <canvas id="reportChart" width="800" height="360" aria-label="Report chart per session"></canvas>
+      </div>
+    </section>
+
+    <!-- Add Student Form -->
+    <section id="add-student" class="card">
+      <h2>Add New Student</h2>
+      <form id="addStudentForm" action="#" method="post" novalidate>
+        <div class="grid">
+          <div class="field" id="f-studentId">
+            <label for="studentId">Student ID</label>
+            <input type="text" id="studentId" name="studentId" placeholder="">
+            <span class="error-msg">Student ID must be numeric and not empty.</span>
+          </div>
+          <div class="field" id="f-lastName">
+            <label for="lastName">Last Name</label>
+            <input type="text" id="lastName" name="lastName" placeholder="">
+            <span class="error-msg">Only letters allowed.</span>
+          </div>
+          <div class="field" id="f-firstName">
+            <label for="firstName">First Name</label>
+            <input type="text" id="firstName" name="firstName" placeholder="">
+            <span class="error-msg">Only letters allowed.</span>
+          </div>
+          <div class="field" id="f-email">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" placeholder="">
+            <span class="error-msg">Enter a valid email.</span>
+          </div>
+        </div>
+        <div class="actions">
+          <button type="submit" class="btn">Submit</button>
+          <button type="reset" class="btn secondary">Reset</button>
+        </div>
+      </form>
+      <div id="confirmation" style="color:green; margin-top:10px;"></div>
+
+    </section>
+    <!-- Confirmation message FIXED HERE -->
+<div id="confirmation" style="color:green; margin-top:10px;"></div>
+  </main>
+  <!--button of repport -->
+<button id="showReportBtn" style="margin:15px 0; padding:10px 15px; font-size:15px;">
+  Show Report
+</button>
+<section id="generalReport" style="display:none; margin-top:25px;">
+  <h2>General Report</h2>
+
+  <p><strong>Total Students:</strong> <span id="totalStudents">0</span></p>
+  <p><strong>Present Students:</strong> <span id="presentStudents">0</span></p>
+  <p><strong>Participated Students:</strong> <span id="participatedStudents">0</span></p>
+
+  <canvas id="generalChart" width="400" height="200"></canvas>
+</section>
+
+  <script src="script.js"></script>
+<!--button of search --> 
+<input type="text" id="searchInput" placeholder="Search by name..." 
+style="margin:15px 0; padding:8px; width:250px;">
+<button id="sortAbsences" style="margin-right:10px;">Sort by Absences (Ascending)</button>
+<button id="sortParticipation">Sort by Participation (Descending)</button>
+
+<p id="sortStatus" style="margin-top:10px; font-weight:bold; color:#444;"></p>
+
+  <table id="attendanceTable" aria-label="Student attendance table">
+    <caption>Attendance & Participation - 6 sessions</caption>
+    <thead>
+      <tr>
+        <th rowspan="2">Last Name</th>
+        <th rowspan="2">First Name</th>
+        <th colspan="6">Sessions (Present)</th>
+        <th colspan="6">Participation (P)</th>
+        <th rowspan="2">Absences</th>
+        <th rowspan="2">Participations</th>
+        <th rowspan="2">Message</th>
+      </tr>
+      <tr>
+        <th>S1</th><th>S2</th><th>S3</th><th>S4</th><th>S5</th><th>S6</th>
+        <th>P1</th><th>P2</th><th>P3</th><th>P4</th><th>P5</th><th>P6</th>
+      </tr>
+    </thead>
+    <tbody>
+      <!-- Example student 1 -->
+      <tr>
+        <td class="name-col">Ahmed</td>
+        <td class="name-col">Sara</td>
+        <!-- Presence checkboxes -->
+        <td><input type="checkbox" class="present"></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present"></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present"></td>
+        <td><input type="checkbox" class="present"></td>
+        <!-- Participation checkboxes -->
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td class="absences">0</td>
+        <td class="parts">0</td>
+        <td class="msg">-</td>
+      </tr>
+
+      <!-- Example student 2 -->
+      <tr>
+        <td class="name-col">Yacine</td>
+        <td class="name-col">Ali</td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present"></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present" checked></td>
+
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated" checked></td>
+
+        <td class="absences">0</td>
+        <td class="parts">0</td>
+
+
+<td class="msg">-</td>
+      </tr>
+
+      <!-- Example student 3 -->
+      <tr>
+        <td class="name-col">Houcine</td>
+        <td class="name-col">Rania</td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present"></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present" checked></td>
+        <td><input type="checkbox" class="present"></td>
+
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated" checked></td>
+        <td><input type="checkbox" class="participated"></td>
+        <td><input type="checkbox" class="participated"></td>
+
+        <td class="absences">0</td>
+        <td class="parts">0</td>
+        <td class="msg">-</td>
+      </tr>
+
+    </tbody>
+  </table>
+ <!-- add students-->
+ <script>
+const form = document.getElementById('addStudentForm');
+const tableBody = document.querySelector('#attendanceTable tbody');
+
+form.addEventListener('submit', function(e) {
+  e.preventDefault();
+
+  const firstName = document.getElementById('firstName').value.trim();
+  const lastName  = document.getElementById('lastName').value.trim();
+
+  // Create new row with structure of attendance table
+  const row = document.createElement('tr');
+  row.innerHTML = `
+    <td class="name-col">${lastName}</td>
+    <td class="name-col">${firstName}</td>
+
+    ${'<td><input type="checkbox" class="present"></td>'.repeat(6)}
+    ${'<td><input type="checkbox" class="participated"></td>'.repeat(6)}
+
+    <td class="absences">0</td>
+    <td class="parts">0</td>
+    <td class="msg">-</td>
+  `;
+
+  // Add row to table
+  tableBody.appendChild(row);
+
+  // Make row functional (events)
+  const boxes = row.querySelectorAll('input[type="checkbox"]');
+  boxes.forEach(box => {
+    box.addEventListener('change', () => updateRow(row));
+  });
+
+  updateRow(row);
+
+  form.reset();
+
+//a confirmation message after the student is successfully added.
+const confirmationDiv = document.getElementById('confirmation');
+
+
+confirmationDiv.textContent = `Student ${firstName} ${lastName} has been successfully added!`;
+
+// Optional: hide it after 3 seconds
+setTimeout(() => { confirmationDiv.textContent = ''; }, 3000);
+});
+</script>
+
+  <script>
+ // constants
+ const SESSIONS = 6;
+
+ // Helper: compute and update one row
+ function updateRow(row) {
+   const presentBoxes = row.querySelectorAll('input.present');
+   const partBoxes = row.querySelectorAll('input.participated');
+
+   let presentCount = 0;
+   for (let i = 0; i < presentBoxes.length; i++) {
+     if (presentBoxes[i].checked) presentCount++;
+   }
+
+   let partCount = 0;
+   for (let i = 0; i < partBoxes.length; i++) {
+     if (partBoxes[i].checked) partCount++;
+   }
+
+   const absences = SESSIONS - presentCount;
+
+   const absCell = row.querySelector('.absences');
+   const partsCell = row.querySelector('.parts');
+   const msgCell = row.querySelector('.msg');
+
+   if (absCell) absCell.textContent = absences;
+   if (partsCell) partsCell.textContent = partCount;
+
+   // Row coloring
+   row.classList.remove('row-good','row-warning','row-bad');
+   if (absences < 3) {
+     row.classList.add('row-good');  // green
+   } else if (absences >= 3 && absences <= 4) {
+     row.classList.add('row-warning');  // yellow
+   } else {
+     row.classList.add('row-bad');  // red
+   }
+
+   // Message logic
+   let attendanceMsg;
+   if (absences < 3) attendanceMsg = "Good attendance";
+   else if (absences >= 3 && absences <= 4) attendanceMsg = "Warning - attendance low";
+   else attendanceMsg = "Excluded - too many absences";
+
+   let participationMsg;
+   if (partCount >= 4) participationMsg = "Excellent participation";
+   else participationMsg = "You need to participate more";
+
+   let finalMsg;
+   if (attendanceMsg.startsWith("Good")) {
+     if (partCount >= 4) finalMsg = "Good attendance - Excellent participation";
+     else finalMsg = "Good attendance - You need to participate more";
+   } else if (attendanceMsg.startsWith("Warning")) {
+     finalMsg = "Warning - attendance low - " + participationMsg;
+   } else {
+     finalMsg = "Excluded - too many absences - " + participationMsg;
+   }
+
+   if (msgCell) msgCell.textContent = finalMsg;
+ }
+
+ // initialize and attach listeners
+ function init() {
+   const table = document.getElementById('attendanceTable');
+   const rows = table.querySelectorAll('tbody tr');
+   rows.forEach(row => {
+     const boxes = row.querySelectorAll('input[type="checkbox"]');
+     boxes.forEach(box => {
+       box.addEventListener('change', () => updateRow(row));
+     });
+     updateRow(row);
+   });
+ }
+
+ // Run after DOM load 
+ document.addEventListener('DOMContentLoaded', init);
+ 
+</script>
+<script>
+ $(document).ready(function() {
+  // Highlight row on hover
+  $('#attendanceTable tbody').on('mouseenter', 'tr', function() {
+    $(this).addClass('highlight');
+  }).on('mouseleave', 'tr', function() {
+    $(this).removeClass('highlight');
+  });
+
+  // Click on row to show alert
+  $('#attendanceTable tbody').on('click', 'tr', function() {
+    const firstName = $(this).find('td:nth-child(2)').text().trim();
+    const lastName  = $(this).find('td:nth-child(1)').text().trim();
+    const absences  = $(this).find('.absences').text();
+
+    alert(`Student: ${firstName} ${lastName}\nAbsences: ${absences}`);
+  });
+});
+
+
+
+</script>
+<script>
+document.getElementById("showReportBtn").addEventListener("click", function () {
+
+  const rows = document.querySelectorAll("#attendanceTable tbody tr");
+
+  let total = rows.length;
+  let presentCount = 0;
+  let participatedCount = 0;
+
+  rows.forEach(row => {
+    const presentBoxes = row.querySelectorAll(".present");
+    const partBoxes = row.querySelectorAll(".participated");
+
+    // Count presence (if at least one session is present)
+    let rowPresent = false;
+    presentBoxes.forEach(box => { if (box.checked) rowPresent = true; });
+    if (rowPresent) presentCount++;
+
+    // Count participation (if at least one checkbox is checked)
+    let rowPart = false;
+    partBoxes.forEach(box => { if (box.checked) rowPart = true; });
+    if (rowPart) participatedCount++;
+  });
+
+  // Update text in report
+  document.getElementById("totalStudents").textContent = total;
+  document.getElementById("presentStudents").textContent = presentCount;
+  document.getElementById("participatedStudents").textContent = participatedCount;
+
+  // Show section
+  document.getElementById("generalReport").style.display = "block";
+
+  // Chart.js
+  const ctx = document.getElementById("generalChart").getContext("2d");
+
+  // Destroy old chart if exists
+  if (window.generalChartInstance) {
+    window.generalChartInstance.destroy();
+  }
+
+  window.generalChartInstance = new Chart(ctx, {
+    type: "bar",
+    data: {
+      labels: ["Total", "Present", "Participated"],
+      datasets: [{
+        label: "Student Statistics",
+        data: [total, presentCount, participatedCount],
+        backgroundColor: ["#90caf9", "#81c784", "#ffb74d"]
+      }]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: { stepSize: 1 }
+        }
+      }
+    }
+  });
+
+});
+</script>
+<!--script ta3 buttons SORT BY ABSENCES w SORT BY participation w search student b nom et prenom-->
+<script>
+//  SEARCH FUNCTION 
+$("#searchInput").on("keyup", function () {
+    let value = $(this).val().toLowerCase();
+
+    $("#attendanceTable tbody tr").filter(function () {
+        $(this).toggle(
+            $(this).find("td:nth-child(1)").text().toLowerCase().indexOf(value) > -1 ||
+            $(this).find("td:nth-child(2)").text().toLowerCase().indexOf(value) > -1
+        );
+    });
+});
+
+//  SORT BY ABSENCES (ASC) 
+$("#sortAbsences").on("click", function () {
+    let rows = $("#attendanceTable tbody tr").get();
+
+    rows.sort(function (a, b) {
+        let absA = parseInt($(a).find(".absences").text());
+        let absB = parseInt($(b).find(".absences").text());
+        return absA - absB; // ascending
+    });
+
+    $("#attendanceTable tbody").append(rows);
+
+    $("#sortStatus").text("Currently sorted by absences (ascending)");
+});
+
+//  SORT BY PARTICIPATION (DESC) 
+$("#sortParticipation").on("click", function () {
+    let rows = $("#attendanceTable tbody tr").get();
+
+    rows.sort(function (a, b) {
+        let pA = parseInt($(a).find(".parts").text());
+        let pB = parseInt($(b).find(".parts").text());
+        return pB - pA; // descending
+    });
+
+    $("#attendanceTable tbody").append(rows);
+
+    $("#sortStatus").text("Currently sorted by participation (descending)");
+});
+</script>
+
+
+
+
+</body>
+ </html>
